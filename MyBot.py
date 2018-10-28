@@ -38,42 +38,87 @@ while True:
     # You extract player metadata and the updated map metadata here for convenience.
     me = game.me
     game_map = game.game_map
+    if(game_map.width == 32):
+        max_turns = 400
+    if(game_map.width == 40):
+        max_turns = 425
+    if(game_map.width == 48):
+        max_turns = 450
+    if(game_map.width == 56):
+        max_turns = 475
+    if(game_map.width == 64):
+        max_turns = 500
 
     # A command queue holds all the commands you will run this turn. You build this list up and submit it at the
     #   end of the turn.
     command_queue = []
-
+    turn = 0
     for ship in me.get_ships():
-        if ship.is_full:
+        check = game_map.calculate_distance(ship.position, me.shipyard.position)
+        if (game.turn_number > (max_turns - 20)) and check == 1:
+            list_of_moves = game_map.get_unsafe_moves(ship.position, me.shipyard.position)
+            command_queue.append(ship.move(list_of_moves[0]))
+                
+        elif (game.turn_number > (max_turns - 20)):
             list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
-            command_queue.append(
-                ship.move(
-                    list_of_moves))
+            command_queue.append(ship.move(list_of_moves))
+            
+        
+        
+        
+        elif ship.halite_amount > 950 or game.turn_number > 400 or (ship.halite_amount > 200 and game_map.calculate_distance(ship.position, me.shipyard.position) < 3):
+            list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
+            if list_of_moves == Direction.Still:
+                if game_map[ship.position.directional_offset(Direction.West)].is_empty:
+                    list_of_moves = Direction.West
+                elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
+                    list_of_moves = Direction.East
+                elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
+                    list_of_moves = Direction.South
+                elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
+                    list_of_moves = Direction.North
+            command_queue.append(ship.move(list_of_moves))
+            game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
         # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
         #   Else, collect halite.
-        elif game_map[ship.position].halite_amount < constants.MAX_HALITE / 10:
-            dire = random.randint(1,101)
-            dire = dire % 4
-            if( dire == 0 ):
-                list_of_moves = game_map.naive_navigate(ship, ship.position.directional_offset(Direction.West))
-            elif(dire == 1):
-                list_of_moves = game_map.naive_navigate(ship, ship.position.directional_offset(Direction.East))
-            elif(dire == 2):
-                list_of_moves = game_map.naive_navigate(ship, ship.position.directional_offset(Direction.South))
-            elif(dire == 3              ):
-                list_of_moves = game_map.naive_navigate(ship, ship.position.directional_offset(Direction.North))
-            command_queue.append(
-                ship.move(
-                    list_of_moves))
+        elif game_map[ship.position].halite_amount < 50:
+            maxhal = 0
+            if game_map[ship.position.directional_offset(Direction.West)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.West)].is_empty:
+                list_of_moves = Direction.West
+                maxhal = game_map[ship.position.directional_offset(Direction.West)].halite_amount
+            if game_map[ship.position.directional_offset(Direction.East)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.East)].is_empty:
+                list_of_moves = Direction.East
+                maxhal = game_map[ship.position.directional_offset(Direction.East)].halite_amount
+            if game_map[ship.position.directional_offset(Direction.South)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.South)].is_empty:
+                list_of_moves = Direction.South
+                maxhal = game_map[ship.position.directional_offset(Direction.South)].halite_amount
+            if game_map[ship.position.directional_offset(Direction.North)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.North)].is_empty:
+                list_of_moves = Direction.North
+                maxhal = game_map[ship.position.directional_offset(Direction.North)].halite_amount
+            if maxhal < 50 and ship.halite_amount > 800:
+                list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
+                if list_of_moves == Direction.Still:
+                    if game_map[ship.position.directional_offset(Direction.West)].is_empty:
+                        list_of_moves = Direction.West
+                    elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
+                        list_of_moves = Direction.East
+                    elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
+                        list_of_moves = Direction.South
+                    elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
+                        list_of_moves = Direction.North
+            if maxhal == 0:
+                command_queue.append(ship.stay_still())
+            else :
+                command_queue.append(ship.move(list_of_moves))
+                game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
         else:
             command_queue.append(ship.stay_still())
-
+    turn = turn + 1
     # If the game is in the first 200 turns and you have enough halite, spawn a ship.
     # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
-    if game.turn_number <= 200 and no_of_ships < 5 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
+    if game.turn_number <= 200 and no_of_ships < 25 and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
         command_queue.append(me.shipyard.spawn())
         no_of_ships = no_of_ships + 1
 
     # Send your moves back to the game environment, ending this turn.
     game.end_turn(command_queue)
-
