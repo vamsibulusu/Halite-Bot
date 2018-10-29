@@ -53,15 +53,15 @@ top_halite = []
 while (x_cor < game.game_map.width):
     while (y_cor < game.game_map.width):
         cur_position = Position(x_cor, y_cor)
-        top_halite.append([cur_position, 0, game.game_map[cur_position].halite_amount])
+        top_halite.append([x_cor, y_cor, 0, game.game_map[cur_position].halite_amount])
         x_cor = x_cor + 1
         y_cor = y_cor + 1
         
 
-top_halite.sort(key=lambda x: x[2], reverse = True)
+top_halite.sort(key=lambda x: x[3], reverse = True)
 
 for xx in top_halite:
-    del xx[2]    
+    del xx[3]    
 
 
 
@@ -111,14 +111,14 @@ while True:
             game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
         # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
         #   Else, collect halite.
-        elif (foo % 2 == 0):
-            for posi in top_halite:
-                if (posi[1] == 0):
-                    list_of_moves = game_map.naive_navigate(ship, posi[0])
-                    posi[1] = 1
-                    break
-            command_queue.append(ship.move(list_of_moves))
-            
+        elif (ship.id == 2) and (ship.halite_amount < 800):
+            if not (ship.position == Position(top_halite[0][0], top_halite[0][1])):
+                list_of_moves = game_map.naive_navigate(ship, Position(top_halite[0][0], top_halite[0][1]))
+                command_queue.append(ship.move(list_of_moves))
+            else:
+                command_queue.append(ship.stay_still())
+                
+
         
         elif game_map[ship.position].halite_amount < 50:
             maxhal = 0
@@ -152,6 +152,7 @@ while True:
                 game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
         else:
             command_queue.append(ship.stay_still())
+        foo = foo + 1
     turn = turn + 1
     # If the game is in the first 200 turns and you have enough halite, spawn a ship.
     # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
