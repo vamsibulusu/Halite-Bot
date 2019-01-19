@@ -159,13 +159,13 @@ while True:
         #logging.info(ship.id)
         #logging.info(ship.position)
         if ship.id not in def_ships and ship.id not in att_ships:
-            if no_of_ships % 3 == 0 and game.turn_number > 50:
+            if no_of_ships % 2 == 0 :
                 att_ships.append(ship.id)
             else:
                 def_ships.append(ship.id)
 
         check = game_map.calculate_distance(ship.position, me.shipyard.position)
-        if ship.id in att_ships:
+        if ship.id in att_ships and game.turn_number > max_turns*2/3 and ship.halite_amount < 500:
             attack()
         elif (game.turn_number > (max_turns - 30)) and check == 1:
             list_of_moves = game_map.get_unsafe_moves(ship.position, me.shipyard.position)
