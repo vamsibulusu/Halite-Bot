@@ -47,26 +47,84 @@ if(game.game_map.width == 56):
 if(game.game_map.width == 64):
     max_turns = 500
 
-x_cor = 0 
-y_cor = 0
-top_halite = []
-while (x_cor < game.game_map.width):
-    while (y_cor < game.game_map.width):
-        cur_position = Position(x_cor, y_cor)
-        top_halite.append([x_cor, y_cor, 0, game.game_map[cur_position].halite_amount])
-        x_cor = x_cor + 1
-        y_cor = y_cor + 1
-        
 
-top_halite.sort(key=lambda x: x[3], reverse = True)
+def explore():
+    if ship.halite_amount > 950 or (ship.halite_amount > 600 and game_map.calculate_distance(ship.position, me.shipyard.position) < 5):
+        list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
+        if list_of_moves == Direction.Still:
+            if game_map[ship.position.directional_offset(Direction.West)].is_empty:
+                list_of_moves = Direction.West
+            elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
+                list_of_moves = Direction.East
+            elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
+                list_of_moves = Direction.South
+            elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
+                list_of_moves = Direction.North
+        command_queue.append(ship.move(list_of_moves))
+        game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
+    # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
+    #   Else, collect halite.
+    elif (ship.id == 2) and (ship.halite_amount < 800):
+        if not (ship.position == Position(top_halite[0][0], top_halite[0][1])):
+            list_of_moves = game_map.naive_navigate(ship, Position(top_halite[0][0], top_halite[0][1]))
+            command_queue.append(ship.move(list_of_moves))
+        else:
+            command_queue.append(ship.stay_still())
+            
 
-for xx in top_halite:
-    del xx[3]    
+    
+    elif game_map[ship.position].halite_amount < 50:
+        maxhal = 0
+        if game_map[ship.position.directional_offset(Direction.West)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.West)].is_empty:
+            list_of_moves = Direction.West
+            maxhal = game_map[ship.position.directional_offset(Direction.West)].halite_amount
+        if game_map[ship.position.directional_offset(Direction.East)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.East)].is_empty:
+            list_of_moves = Direction.East
+            maxhal = game_map[ship.position.directional_offset(Direction.East)].halite_amount
+        if game_map[ship.position.directional_offset(Direction.South)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.South)].is_empty:
+            list_of_moves = Direction.South
+            maxhal = game_map[ship.position.directional_offset(Direction.South)].halite_amount
+        if game_map[ship.position.directional_offset(Direction.North)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.North)].is_empty:
+            list_of_moves = Direction.North
+            maxhal = game_map[ship.position.directional_offset(Direction.North)].halite_amount
+        if maxhal < 50 and ship.halite_amount > 800:
+            list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
+            if list_of_moves == Direction.Still:
+                if game_map[ship.position.directional_offset(Direction.West)].is_empty:
+                    list_of_moves = Direction.West
+                elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
+                    list_of_moves = Direction.East
+                elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
+                    list_of_moves = Direction.South
+                elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
+                    list_of_moves = Direction.North
+        if maxhal == 0:
+            command_queue.append(ship.stay_still())
+        else :
+            command_queue.append(ship.move(list_of_moves))
+            game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
+    else:
+        command_queue.append(ship.stay_still())
+
+def attack():
+    enemy_ships = []
+    for player in game.players :
+        if game.players[player] != game.me:
+            for e_ship in game.players[player].get_ships():
+                enemy_ships.append([game_map.calculate_distance(ship.position, e_ship.position),e_ship.position])
+
+    enemy_ships.sort(key = lambda x: x[0])
+    if enemy_ships[0][0] == 1:
+        list_of_moves = game_map.get_unsafe_moves(ship.position ,enemy_ships[0][1])
+        command_queue.append(ship.move(list_of_moves[0]))
+    else :
+        list_of_moves = game_map.naive_navigate(ship ,enemy_ships[0][1])
+        command_queue.append(ship.move(list_of_moves))
+    logging.info(list_of_moves)
 
 
-
-
-
+def_ships =[]
+att_ships =[]
 
 while True:
     # This loop handles each turn of the game. The game object changes every turn, and you refresh that state by
@@ -80,13 +138,36 @@ while True:
     # A command queue holds all the commands you will run this turn. You build this list up and submit it at the
     #   end of the turn.
     command_queue = []
-    turn = 0
+
+    x_cor = 0 
+    y_cor = 0
+    top_halite = []
+    while (x_cor < game.game_map.width):
+        while (y_cor < game.game_map.width):
+            cur_position = Position(x_cor, y_cor)
+            top_halite.append([x_cor, y_cor, 0, game.game_map[cur_position].halite_amount])
+            x_cor = x_cor + 1
+            y_cor = y_cor + 1
+        
+
+    top_halite.sort(key=lambda x: x[3], reverse = True)
+
+    for xx in top_halite:
+        del xx[3]    
+
     for ship in me.get_ships():
-        foo = 1
-        logging.info(ship.id)
-        logging.info(ship.position)
+        #logging.info(ship.id)
+        #logging.info(ship.position)
+        if ship.id not in def_ships and ship.id not in att_ships:
+            if no_of_ships % 3 == 0 and game.turn_number > 50:
+                att_ships.append(ship.id)
+            else:
+                def_ships.append(ship.id)
+
         check = game_map.calculate_distance(ship.position, me.shipyard.position)
-        if (game.turn_number > (max_turns - 30)) and check == 1:
+        if ship.id in att_ships:
+            attack()
+        elif (game.turn_number > (max_turns - 30)) and check == 1:
             list_of_moves = game_map.get_unsafe_moves(ship.position, me.shipyard.position)
             command_queue.append(ship.move(list_of_moves[0]))
                 
@@ -94,66 +175,13 @@ while True:
             list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
             command_queue.append(ship.move(list_of_moves))
                            
+        else :
+            #random_int = random.randint(0,1)
+            #if random_int == 0:
+            explore()
+            #else :
+            #    attack()
             
-            
-        elif ship.halite_amount > 950 or (ship.halite_amount > 600 and game_map.calculate_distance(ship.position, me.shipyard.position) < 5):
-            list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
-            if list_of_moves == Direction.Still:
-                if game_map[ship.position.directional_offset(Direction.West)].is_empty:
-                    list_of_moves = Direction.West
-                elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
-                    list_of_moves = Direction.East
-                elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
-                    list_of_moves = Direction.South
-                elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
-                    list_of_moves = Direction.North
-            command_queue.append(ship.move(list_of_moves))
-            game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
-        # For each of your ships, move randomly if the ship is on a low halite location or the ship is full.
-        #   Else, collect halite.
-        elif (ship.id == 2) and (ship.halite_amount < 800):
-            if not (ship.position == Position(top_halite[0][0], top_halite[0][1])):
-                list_of_moves = game_map.naive_navigate(ship, Position(top_halite[0][0], top_halite[0][1]))
-                command_queue.append(ship.move(list_of_moves))
-            else:
-                command_queue.append(ship.stay_still())
-                
-
-        
-        elif game_map[ship.position].halite_amount < 50:
-            maxhal = 0
-            if game_map[ship.position.directional_offset(Direction.West)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.West)].is_empty:
-                list_of_moves = Direction.West
-                maxhal = game_map[ship.position.directional_offset(Direction.West)].halite_amount
-            if game_map[ship.position.directional_offset(Direction.East)].halite_amount > maxhal and game_map[ship.position.directional_offset(Direction.East)].is_empty:
-                list_of_moves = Direction.East
-                maxhal = game_map[ship.position.directional_offset(Direction.East)].halite_amount
-            if game_map[ship.position.directional_offset(Direction.South)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.South)].is_empty:
-                list_of_moves = Direction.South
-                maxhal = game_map[ship.position.directional_offset(Direction.South)].halite_amount
-            if game_map[ship.position.directional_offset(Direction.North)].halite_amount>maxhal and game_map[ship.position.directional_offset(Direction.North)].is_empty:
-                list_of_moves = Direction.North
-                maxhal = game_map[ship.position.directional_offset(Direction.North)].halite_amount
-            if maxhal < 50 and ship.halite_amount > 800:
-                list_of_moves = game_map.naive_navigate(ship, me.shipyard.position)
-                if list_of_moves == Direction.Still:
-                    if game_map[ship.position.directional_offset(Direction.West)].is_empty:
-                        list_of_moves = Direction.West
-                    elif game_map[ship.position.directional_offset(Direction.East)].is_empty:
-                        list_of_moves = Direction.East
-                    elif game_map[ship.position.directional_offset(Direction.South)].is_empty:
-                        list_of_moves = Direction.South
-                    elif game_map[ship.position.directional_offset(Direction.North)].is_empty:
-                        list_of_moves = Direction.North
-            if maxhal == 0:
-                command_queue.append(ship.stay_still())
-            else :
-                command_queue.append(ship.move(list_of_moves))
-                game_map[ship.position.directional_offset(list_of_moves)].mark_unsafe(ship)
-        else:
-            command_queue.append(ship.stay_still())
-        foo = foo + 1
-    turn = turn + 1
     # If the game is in the first 200 turns and you have enough halite, spawn a ship.
     # Don't spawn a ship if you currently have a ship at port, though - the ships will collide.
     if game.turn_number <= 200 and no_of_ships < 0.5 * game_map.width and me.halite_amount >= constants.SHIP_COST and not game_map[me.shipyard].is_occupied:
