@@ -50,6 +50,14 @@ class MapCell:
         Use in conjunction with GameMap.naive_navigate.
         """
         self.ship = ship
+        
+    def mark_safe(self, ship):
+        """
+        Mark this cell as safe for navigation.
+
+        Use in conjunction with GameMap.naive_navigate.
+        """
+        self.ship = None
 
     def __eq__(self, other):
         return self.position == other.position
